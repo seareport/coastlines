@@ -61,7 +61,7 @@ repos:
 
   - repo: "https://github.com/charliermarsh/ruff-pre-commit"
     # Ruff version.
-    rev: 'v0.2.2'
+    rev: "v0.2.2"
     hooks:
       - id: "ruff"
 
@@ -77,5 +77,26 @@ repos:
       - id: "poetry-lock"
         args: ["--check"]
       - id: "poetry-export"
-        name: 'poetry export main'
-        args: ["--without-hashes", "--only", "main", "-f", "requirements.txt", "-o", "requirements/requirements.txt"]
+        name: "poetry export main"
+        args:
+          [
+            "--without-hashes",
+            "--only",
+            "main",
+            "-f",
+            "requirements.txt",
+            "-o",
+            "requirements/requirements.txt",
+          ]
+      - id: "poetry-export"
+        name: "poetry export main"
+        args:
+          [
+            "--without-hashes",
+            "--with",
+            "dev",
+            "-f",
+            "requirements.txt",
+            "-o",
+            "requirements/requirements-dev.txt",
+          ]

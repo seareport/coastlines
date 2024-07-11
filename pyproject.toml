@@ -11,25 +11,28 @@ cartopy = "*"
 cyclopts = "*"
 dask = {version = "*", extras = ["array", "dataframe", "diagnostics", "distributed", "complete"]}
 geopandas = "*"
-geoviews = "*"
 httpx = "*"
-hvplot = "*"
-ipykernel = "*"
-ipympl = "*"
-matplotlib = "*"
 multifutures = "*"
 mypy = "*"
 pandas = "*"
 pyarrow = "*"
 pyogrio = "*"
 pyproj = "*"
-pytest = "*"
 shapely = "*"
 datashader = "*"
 spatialpandas = "*"
+platformdirs = "*"
 
 [tool.poetry.scripts]
 coastlines = 'coastlines.__main__:main'
+
+[tool.poetry.group.dev.dependencies]
+hvplot = "*"
+ipykernel = "*"
+ipympl = "*"
+matplotlib = "*"
+geoviews = "*"
+pytest = "*"
 
 [build-system]
 requires = ["poetry-core"]
