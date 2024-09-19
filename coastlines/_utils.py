@@ -22,7 +22,7 @@ def download(provider: str, url: str, path: pathlib.Path) -> None:
                     fd.write(data)
 
 
-def extract_zip(provider, path):
+def extract_zip(provider: str, path: pathlib.Path) -> None:
     logger.info("%s: Extracting zip: %s", provider, path)
     with path.open("rb") as fd:
         zf = zipfile.ZipFile(fd)

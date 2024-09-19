@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _create_meta_group(app: cyclopts.App):
+def _create_meta_group(app: cyclopts.App) -> None:
     app["--help"].group = "Meta"
     app["--version"].group = "Meta"
 
@@ -52,18 +52,22 @@ def gshhg_download_(
 
 
 @app.command(name="naturalearth")
-def naturalearth_download():
+def naturalearth_download(
+    target_path: pathlib.Path = pathlib.Path("out"),
+) -> None:
     """Download and extract data from Naturalearth."""
-    _naturalearth.main()
+    _naturalearth.main(target_path=target_path)
 
 
 @app.command(name="osm")
-def osm_download():
+def osm_download(
+    target_path: pathlib.Path = pathlib.Path("out"),
+) -> None:
     """Download and extract data from OpenStreetMaps."""
-    _osm.main()
+    _osm.main(target_path=target_path)
 
 
-def main():
+def main() -> None:
     app()
 
 

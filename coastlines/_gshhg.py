@@ -41,11 +41,13 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # https://stackoverflow.com/a/72832981/592289
 # Types
-GSHHGResolution = T.Literal["f", "h", "i", "l", "c", "full", "high", "intermediate", "low", "crude"]
+GSHHGResolution = T.Literal["c", "l", "i", "h", "f", "low", "crude", "intermediate", "high", "full"]
 GSHHGShoreline = T.Literal[1, 2, 3, 4, 5, 6]
 # CONSTANTS
-GSHHG_RESOLUTIONS: set[GSHHGResolution] = set(T.get_args(GSHHGResolution))
-GSHHG_SHORELINES: set[GSHHGShoreline] = set(T.get_args(GSHHGShoreline))
+GSHHG_RESOLUTIONS: list[GSHHGResolution] = [
+    resolution for resolution in T.get_args(GSHHGResolution) if len(resolution) == 1
+]
+GSHHG_SHORELINES: list[GSHHGShoreline] = list(T.get_args(GSHHGShoreline))
 
 
 def is_resolution_valid(resolution: str) -> T.TypeGuard[GSHHGResolution]:
@@ -116,8 +118,8 @@ def main(target_path: pathlib.Path) -> None:
     zip_path = RAW_DIR / URL.rsplit("/", 1)[-1]
     _utils.download(provider=provider, url=URL, path=zip_path)
     _utils.extract_zip(provider=provider, path=zip_path)
-    for resolution in ("c", "l", "i", "h", "f"):
-        for shoreline in (5, 6):
+    for resolution in GSHHG_RESOLUTIONS[:1]:
+        for shoreline in GSHHG_SHORELINES[-2:]:
             output = get_path(base_path=target_path, resolution=resolution, shoreline=shoreline)
             logger.info(
                 "%s: Creating global coastlines for %s resolution - shoreline level %s: %s",

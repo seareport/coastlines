@@ -18,13 +18,8 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def main():
-    url = URL
-    path = RAW_DIR / URL.rsplit("/", 1)[-1]
+def main(target_path: pathlib.Path) -> None:
+    (target_path / "out").exists()
 
-    download(url=url, path=path)
-    extract_zip(path)
-
-
-if __name__ == "__main__":
-    main()
+    # download(url=url, path=path)
+    # extract_zip(path)

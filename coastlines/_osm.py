@@ -18,17 +18,18 @@ PROVIDER = "osm"
 RAW_DIR = pathlib.Path("raw") / "osm"
 OUT_DIR = pathlib.Path("out")
 BASE_URL = "https://osmdata.openstreetmap.de/download/{filename}.zip"
-FILES = {
-    "osm_coastlines_split_3857": "coastlines-split-3857",
-    "osm_coastlines_split_4326": "coastlines-split-4326",
-    "osm_land_complete_3857": "land-polygons-complete-3857",
-    "osm_land_complete_4326": "land-polygons-complete-4326",
-    "osm_land_simplified_complete_3857": "simplified-land-polygons-complete-3857",
-    "osm_land_split_3857": "land-polygons-split-3857",
-    "osm_land_split_4326": "land-polygons-split-4326",
-    "osm_water_simplified_split_3857": "simplified-water-polygons-split-3857",
-    "osm_water_split_3857": "water-polygons-split-3857",
-    "osm_water_split_4326": "water-polygons-split-4326",
+
+NAMES = {
+    "coastlines-split-3857": "osm_coastlines_split_3857",
+    "coastlines-split-4326": "osm_coastlines_split_4326",
+    "land-polygons-complete-3857": "osm_land_complete_3857",
+    "land-polygons-complete-4326": "osm_land_complete_4326",
+    "simplified-land-polygons-complete-3857": "osm_land_simplified_complete_3857",
+    "land-polygons-split-3857": "osm_land_split_3857",
+    "land-polygons-split-4326": "osm_land_split_4326",
+    "simplified-water-polygons-split-3857": "osm_water_simplified_split_3857",
+    "water-polygons-split-3857": "osm_water_split_3857",
+    "water-polygons-split-4326": "osm_water_split_4326",
 }
 
 
@@ -45,8 +46,14 @@ def osm_read_shapefile(filename: str, **kwargs: T.Any) -> gpd.GeoDataFrame:
 
 def serialize(gdf: gpd.GeoDataFrame, output_name: str) -> None:
     path = OUT_DIR / f"{output_name}.parquet"
-    logger.info("Parsing %s", path)
-    gdf.to_parquet(path)
+    logger.info("Serializing to: %s", path)
+    gdf.to_parquet(
+        path,
+        write_covering_bbox=True,
+        schema_version="1.0.0",
+        compression="zstd",
+        engine="pyarrow",
+    )
 
 
 def multi_download(filenames: list[str]) -> None:
@@ -73,7 +80,13 @@ def multi_extract(filenames: list[str]) -> None:
     )
 
 
-def main() -> None:
-    filenames = list(FILES.values())
+def main(target_path: pathlib.Path) -> None:
+    filenames = list(NAMES.keys())
     multi_download(filenames)
     multi_extract(filenames)
+    for raw_name, out_name in NAMES.items():
+        gdf = osm_read_shapefile(raw_name)
+        logger.info("parquet")
+        serialize(gdf, out_name)
+        logger.info("geopackage")
+        gdf.to_file(target_path / f"{out_name}.gpkg")
