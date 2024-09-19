@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def download(provider: str, url: str, path: pathlib.Path) -> None:
-    if path.exists():
+    if path.exists() and path.stat().st_size:
         logger.info("%s: Archive already exists. Skipping download: %s", provider, path)
     else:
         logger.info("%s: Downloading %s to: %s", provider, url, path)
