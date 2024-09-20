@@ -26,6 +26,6 @@ mypy:
 	dmypy run ./coastlines
 
 deps:
-	mkdir -p rquirements
+	mkdir -p requirements
 	pre-commit run poetry-lock -a
 	pre-commit run poetry-export -a
