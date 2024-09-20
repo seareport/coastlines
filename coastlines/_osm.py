@@ -47,13 +47,7 @@ def osm_read_shapefile(filename: str, **kwargs: T.Any) -> gpd.GeoDataFrame:
 def serialize(gdf: gpd.GeoDataFrame, output_name: str) -> None:
     path = OUT_DIR / f"{output_name}.parquet"
     logger.info("Serializing to: %s", path)
-    gdf.to_parquet(
-        path,
-        write_covering_bbox=True,
-        schema_version="1.0.0",
-        compression="zstd",
-        engine="pyarrow",
-    )
+    gdf.to_file(path)
 
 
 def multi_download(filenames: list[str]) -> None:
@@ -87,6 +81,4 @@ def main(target_path: pathlib.Path) -> None:
     for raw_name, out_name in NAMES.items():
         gdf = osm_read_shapefile(raw_name)
         logger.info("parquet")
-        serialize(gdf, out_name)
-        logger.info("geopackage")
-        gdf.to_file(target_path / f"{out_name}.gpkg")
+        serialize(gdf, target_path / f"{out_name}.gpkg")
