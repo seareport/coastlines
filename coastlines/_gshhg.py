@@ -129,8 +129,8 @@ def main(target_path: pathlib.Path) -> None:
     zip_path = RAW_DIR / URL.rsplit("/", 1)[-1]
     _utils.download(provider=provider, url=URL, path=zip_path)
     _utils.extract_zip(provider=provider, path=zip_path)
-    for resolution in GSHHG_RESOLUTIONS[-1:]:
-        for shoreline in [5]:  # GSHHG_SHORELINES[-2:]:
+    for resolution in GSHHG_RESOLUTIONS:
+        for shoreline in GSHHG_SHORELINES[-2:]:
             output = get_path(base_path=target_path, resolution=resolution, shoreline=shoreline)
             logger.info(
                 "%s: Creating global coastlines for %s resolution - shoreline level %s: %s",
