@@ -6,6 +6,7 @@ import typing as T
 
 import geopandas as gpd
 import pandas as pd
+from shapely import Polygon
 
 from coastlines import _utils
 
@@ -92,6 +93,16 @@ def gshhg_create_global(
     assert shoreline in (5, 6)
     w1 = gshhg_read_shapefile(resolution, shoreline=1, columns=["geometry"])
     w5_or_6 = gshhg_read_shapefile(resolution, shoreline=shoreline, columns=["geometry"])
+    if (resolution in ["full", "f"]) and (shoreline in [5]):
+        # Fix for Western Antarctic
+        coords = list(w5_or_6.iloc[1].geometry.exterior.coords)
+        coords[0] = [0, coords[0][1]]
+        coords[1] = [0, coords[1][1]]
+        w5_or_6.at[1, "geometry"] = Polygon(coords)
+        # Fix for Eastern Antarctic
+        coords = list(w5_or_6.iloc[0].geometry.exterior.coords)[1:-1]
+        coords[0] = [180, coords[0][1]]
+        w5_or_6.at[0, "geometry"] = Polygon(*coords, [[180.0, -90]])
     ws = _utils.simplify_geometry(T.cast(gpd.GeoDataFrame, pd.concat((w1, w5_or_6))))
     ws["area_m2"] = T.cast(gpd.GeoDataFrame, ws.to_crs(epsg=4087)).area
     ws = T.cast(gpd.GeoDataFrame, ws.sort_values(by="area_m2", ascending=False).reset_index(drop=True))
@@ -118,7 +129,7 @@ def main(target_path: pathlib.Path) -> None:
     zip_path = RAW_DIR / URL.rsplit("/", 1)[-1]
     _utils.download(provider=provider, url=URL, path=zip_path)
     _utils.extract_zip(provider=provider, path=zip_path)
-    for resolution in GSHHG_RESOLUTIONS[:1]:
+    for resolution in GSHHG_RESOLUTIONS:
         for shoreline in GSHHG_SHORELINES[-2:]:
             output = get_path(base_path=target_path, resolution=resolution, shoreline=shoreline)
             logger.info(
