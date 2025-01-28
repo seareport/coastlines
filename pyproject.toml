@@ -32,6 +32,8 @@ ipympl = "*"
 matplotlib = "*"
 geoviews = "*"
 pytest = "*"
+types-geopandas = "*"
+types-shapely = "*"
 
 [build-system]
 requires = ["poetry-core"]

@@ -20,8 +20,8 @@ OUT_DIR = pathlib.Path("out")
 BASE_URL = "https://osmdata.openstreetmap.de/download/{filename}.zip"
 
 NAMES = {
-    "coastlines-split-3857": "osm_coastlines_split_3857",
-    "coastlines-split-4326": "osm_coastlines_split_4326",
+    # "coastlines-split-3857": "osm_coastlines_split_3857",
+    # "coastlines-split-4326": "osm_coastlines_split_4326",
     "land-polygons-complete-3857": "osm_land_complete_3857",
     "land-polygons-complete-4326": "osm_land_complete_4326",
     "simplified-land-polygons-complete-3857": "osm_land_simplified_complete_3857",
@@ -44,10 +44,9 @@ def osm_read_shapefile(filename: str, **kwargs: T.Any) -> gpd.GeoDataFrame:
     return gdf
 
 
-def serialize(gdf: gpd.GeoDataFrame, output_name: str) -> None:
-    path = OUT_DIR / f"{output_name}.parquet"
+def serialize(gdf: gpd.GeoDataFrame, path: pathlib.Path, **kwargs: T.Any) -> None:
     logger.info("Serializing to: %s", path)
-    gdf.to_file(path)
+    gdf.to_file(path, **kwargs)
 
 
 def multi_download(filenames: list[str]) -> None:
@@ -79,6 +78,9 @@ def main(target_path: pathlib.Path) -> None:
     multi_download(filenames)
     multi_extract(filenames)
     for raw_name, out_name in NAMES.items():
+        logger.info("%s: Parsing", raw_name)
         gdf = osm_read_shapefile(raw_name)
-        logger.info("parquet")
-        serialize(gdf, target_path / f"{out_name}.gpkg")
+        logger.info("%s: Calculating area and perimeter", raw_name)
+        gdf = _utils.calc_area_and_perimeter(gdf)
+        logger.info("%s: Serializing", raw_name)
+        serialize(gdf, target_path / f"{out_name}.sqlite", driver="SQLite", spatialite=True)
