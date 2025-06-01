@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
 import pathlib
 import typing as T
 import zipfile
@@ -9,6 +11,7 @@ import geopandas as gpd
 import httpx
 import numpy as np
 import numpy.typing as npt
+import pyogrio
 import pyproj
 import shapely
 
@@ -20,6 +23,25 @@ STEREO = pyproj.CRS(("esri", 102018))
 WGS84 = pyproj.CRS(("epsg", 4326))
 WGS84_GEOD = pyproj.Geod(ellps="WGS84")
 AREA = WORLD_SINUSOIDAL = pyproj.CRS(("esri", 54008))
+
+
+def to_file(gdf: gpd.GeoDataFrame, filename: str | os.PathLike[str], **kwargs: T.Any):
+    if gdf.attrs:
+        kwargs.setdefault("layer_metadata", {})["PANDAS_ATTRS"] = json.dumps(gdf.attrs)
+    gdf.to_file(filename, **kwargs)
+
+
+def read_file(
+    filename: str | os.PathLike[str],
+    layer: str | None = None,
+    **kwargs: T.Any,
+) -> gpd.GeoDataFrame:
+    info = pyogrio.read_info(filename, layer=layer, **kwargs)
+    gdf = T.cast(gpd.GeoDataFrame, gpd.read_file(filename, engine="pyogrio", layer=layer, **kwargs))
+    if layer_metadata := info["layer_metadata"]:
+        if pandas_attrs := layer_metadata.get("PANDAS_ATTRS"):
+            gdf.attrs.update(json.loads(pandas_attrs))
+    return gdf
 
 
 def download(provider: str, url: str, path: pathlib.Path) -> None:

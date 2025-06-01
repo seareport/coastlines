@@ -8,6 +8,7 @@ import zipfile
 import geopandas as gpd
 import httpx
 import multifutures
+import pyogrio
 
 from coastlines import _utils
 
@@ -22,14 +23,14 @@ BASE_URL = "https://osmdata.openstreetmap.de/download/{filename}.zip"
 NAMES = {
     # "coastlines-split-3857": "osm_coastlines_split_3857",
     # "coastlines-split-4326": "osm_coastlines_split_4326",
-    "land-polygons-complete-3857": "osm_land_complete_3857",
+    # "land-polygons-complete-3857": "osm_land_complete_3857",
     "land-polygons-complete-4326": "osm_land_complete_4326",
-    "simplified-land-polygons-complete-3857": "osm_land_simplified_complete_3857",
-    "land-polygons-split-3857": "osm_land_split_3857",
-    "land-polygons-split-4326": "osm_land_split_4326",
-    "simplified-water-polygons-split-3857": "osm_water_simplified_split_3857",
-    "water-polygons-split-3857": "osm_water_split_3857",
-    "water-polygons-split-4326": "osm_water_split_4326",
+    # "simplified-land-polygons-complete-3857": "osm_land_simplified_complete_3857",
+    # "land-polygons-split-3857": "osm_land_split_3857",
+    # "land-polygons-split-4326": "osm_land_split_4326",
+    # "simplified-water-polygons-split-3857": "osm_water_simplified_split_3857",
+    # "water-polygons-split-3857": "osm_water_split_3857",
+    # "water-polygons-split-4326": "osm_water_split_4326",
 }
 
 
@@ -37,23 +38,20 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def osm_read_shapefile(filename: str, **kwargs: T.Any) -> gpd.GeoDataFrame:
+def osm_read_shapefile(filename: str) -> gpd.GeoDataFrame:
     path = next((RAW_DIR / filename).glob("*.shp"))
     logger.info("Parsing %s", path)
-    gdf = T.cast(gpd.GeoDataFrame, gpd.read_file(path, engine="pyogrio", **kwargs))
+    gdf = _utils.read_file(path)
+    info = pyogrio.read_info(path)
+    gdf.attrs.update(**info["layer_metadata"])
     return gdf
-
-
-def serialize(gdf: gpd.GeoDataFrame, path: pathlib.Path, **kwargs: T.Any) -> None:
-    logger.info("Serializing to: %s", path)
-    gdf.to_file(path, **kwargs)
 
 
 def multi_download(filenames: list[str]) -> None:
     logger.info("%s: Downloading archives", PROVIDER)
     paths = [RAW_DIR / f"{filename}.zip" for filename in filenames]
     urls = [BASE_URL.format(filename=filename) for filename in filenames]
-    multifutures.multithread(
+    _ = multifutures.multithread(
         func=_utils.download,
         func_kwargs=[
             {"provider": PROVIDER, "url": url, "path": path}
@@ -66,7 +64,7 @@ def multi_download(filenames: list[str]) -> None:
 def multi_extract(filenames: list[str]) -> None:
     logger.info("%s: Extracting archives", PROVIDER)
     paths = [RAW_DIR / f"{filename}.zip" for filename in filenames]
-    multifutures.multiprocess(
+    _ = multifutures.multiprocess(
         func=_utils.extract_zip,
         func_kwargs=[{"provider": PROVIDER, "path": path} for path in paths],
         check=True,
@@ -83,4 +81,9 @@ def main(target_path: pathlib.Path) -> None:
         logger.info("%s: Calculating area and perimeter", raw_name)
         gdf = _utils.calc_area_and_perimeter(gdf)
         logger.info("%s: Serializing", raw_name)
-        serialize(gdf, target_path / f"{out_name}.sqlite", driver="SQLite", spatialite=True)
+        _utils.to_file(
+            gdf=gdf,
+            filename=target_path / f"{out_name}.gpkg",
+            driver="SQLite",
+            spatialite=True,
+        )
