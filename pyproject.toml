@@ -26,12 +26,19 @@ spatialpandas = "*"
 coastlines = 'coastlines.__main__:main'
 
 [tool.poetry.group.dev.dependencies]
+basedpyright = "*"
+cartopy = "*"
+geoviews = "*"
 hvplot = "*"
 ipykernel = "*"
-ipympl = "*"
+ipython = "*"
 matplotlib = "*"
-geoviews = "*"
+microsoft-python-type-stubs = {git = "https://github.com/microsoft/python-type-stubs.git"}
+mypy = "*"
+pandas-stubs = "*"
 pytest = "*"
+pytest-cov = "*"
+scipy-stubs = "*"
 types-geopandas = "*"
 types-shapely = "*"
 
