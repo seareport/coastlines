@@ -21,6 +21,7 @@ pyproj = "*"
 shapely = "*"
 datashader = "*"
 spatialpandas = "*"
+osmium = "*"
 
 [tool.poetry.scripts]
 coastlines = 'coastlines.__main__:main'

@@ -8,7 +8,11 @@ import zipfile
 import geopandas as gpd
 import httpx
 import multifutures
+import osmium
+import osmium.filter
+import pandas as pd
 import pyogrio
+import shapely
 
 from coastlines import _utils
 
@@ -38,52 +42,54 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def osm_read_shapefile(filename: str) -> gpd.GeoDataFrame:
-    path = next((RAW_DIR / filename).glob("*.shp"))
-    logger.info("Parsing %s", path)
-    gdf = _utils.read_file(path)
-    info = pyogrio.read_info(path)
-    gdf.attrs.update(**info["layer_metadata"])
+def download_land_complete() -> None:
+    _utils.download(
+        provider=PROVIDER,
+        url="https://osmdata.openstreetmap.de/download/osm_land_complete_4326.zip",
+        path=RAW_DIR / "land-polygons-complete-4326.zip",
+    )
+
+
+def download_antarctica_pbf() -> None:
+    _utils.download(
+        provider=PROVIDER,
+        url="https://download.geofabrik.de/antarctica-latest.osm.pbf",
+        path=RAW_DIR / "antarctica-latest.osm.pbf",
+    )
+
+
+def extract_ice_shelves() -> gpd.GeoDataFrame:
+    pbf = RAW_DIR / "antarctica-latest.osm.pbf"
+    fp = osmium.FileProcessor(pbf)
+    fp = fp.with_areas()
+    fp = fp.with_locations()
+    fp = fp.with_filter(osmium.filter.TagFilter(("glacier:type", "shelf")))
+    # fp = fp.with_filter(osmium.filter.EntityFilter(osmium.osm.WAY))
+    fp = fp.with_filter(osmium.filter.GeoInterfaceFilter())
+    gdf = gpd.GeoDataFrame.from_features(fp)
+    gdf = gpd.GeoDataFrame(geometry=shapely.get_parts(gdf.union_all()), crs=4326)
     return gdf
 
 
-def multi_download(filenames: list[str]) -> None:
-    logger.info("%s: Downloading archives", PROVIDER)
-    paths = [RAW_DIR / f"{filename}.zip" for filename in filenames]
-    urls = [BASE_URL.format(filename=filename) for filename in filenames]
-    _ = multifutures.multithread(
-        func=_utils.download,
-        func_kwargs=[
-            {"provider": PROVIDER, "url": url, "path": path}
-            for (url, path) in zip(urls, paths, strict=True)
-        ],
-        check=True,
-    )
-
-
-def multi_extract(filenames: list[str]) -> None:
-    logger.info("%s: Extracting archives", PROVIDER)
-    paths = [RAW_DIR / f"{filename}.zip" for filename in filenames]
-    _ = multifutures.multiprocess(
-        func=_utils.extract_zip,
-        func_kwargs=[{"provider": PROVIDER, "path": path} for path in paths],
-        check=True,
-    )
-
 
 def main(target_path: pathlib.Path) -> None:
-    filenames = list(NAMES.keys())
-    multi_download(filenames)
-    multi_extract(filenames)
-    for raw_name, out_name in NAMES.items():
-        logger.info("%s: Parsing", raw_name)
-        gdf = osm_read_shapefile(raw_name)
-        logger.info("%s: Calculating area and perimeter", raw_name)
-        gdf = _utils.calc_area_and_perimeter(gdf)
-        logger.info("%s: Serializing", raw_name)
-        _utils.to_file(
-            gdf=gdf,
-            filename=target_path / f"{out_name}.gpkg",
-            driver="SQLite",
-            spatialite=True,
-        )
+    download_land_complete()
+    download_antarctica_pbf()
+    path = f"/vsizip/{RAW_DIR}/land-polygons-complete-4326.zip/land-polygons-complete-4326/land_polygons.shp"
+    osm = _utils.read_file(path)
+    ice_shelves = extract_ice_shelves()
+    antarctica = osm.clip((-180, -90, 180, -60))
+    rest_of_world = osm.clip((-180, -60, 180, 90))
+    antarctica_grounding = gpd.overlay(antarctica, ice_shelves, how='difference') \
+        .explode().normalize().to_frame("geometry")
+    osm_grounding = pd.concat([rest_of_world[["geometry"]], antarctica_grounding], ignore_index=True) \
+        .normalize().to_frame("geometry")
+    osm_grounding.attrs.update(osm.attrs)
+    _utils.to_file(
+        gdf=_utils.calc_area_and_perimeter(osm),
+        filename=OUT_DIR / "osm_land_complete_4326.gpkg",
+    )
+    _utils.to_file(
+        gdf=_utils.calc_area_and_perimeter(osm_grounding),
+        filename=OUT_DIR / "osm_land_complete_grounding_4326.gpkg",
+    )

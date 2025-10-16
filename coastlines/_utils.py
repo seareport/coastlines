@@ -37,8 +37,9 @@ def read_file(
     **kwargs: T.Any,
 ) -> gpd.GeoDataFrame:
     info = pyogrio.read_info(filename, layer=layer, **kwargs)
-    gdf = T.cast(gpd.GeoDataFrame, gpd.read_file(filename, engine="pyogrio", layer=layer, **kwargs))
-    if layer_metadata := info["layer_metadata"]:
+    gdf = pyogrio.read_dataframe(filename, layer=layer, use_arrow=True, **kwargs)
+    if layer_metadata := info.get("layer_metadata"):
+        gdf.attrs.update(**info["layer_metadata"])
         if pandas_attrs := layer_metadata.get("PANDAS_ATTRS"):
             gdf.attrs.update(json.loads(pandas_attrs))
     return gdf
@@ -50,7 +51,7 @@ def download(provider: str, url: str, path: pathlib.Path) -> None:
     else:
         logger.info("%s: Downloading %s to: %s", provider, url, path)
         with path.open("wb") as fd:
-            with httpx.stream("GET", url) as r:
+            with httpx.stream("GET", url, follow_redirects=True) as r:
                 for data in r.iter_bytes():
                     fd.write(data)
 
